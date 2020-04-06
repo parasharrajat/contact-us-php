@@ -4,7 +4,7 @@
     "description": "Simple Php script to send Mail to user for contact us form",
     "keywords": ["mailer","contact"],
     "homepage": "https://github.com/parasharrajat/contact-us-php",
-    "license": "Apache License 2.0",
+    "license": "Apache-2.0",
     "authors": [
         {
             "name": "Rajat Parashar",
