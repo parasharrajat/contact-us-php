@@ -26,5 +26,8 @@
         "post-update-cmd": [
             "Mailer\\postInstall"
         ]
+    },
+    "autoload": {
+        "files": ["index.php"]
     }
 }
