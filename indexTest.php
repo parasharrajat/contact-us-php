@@ -1,4 +1,5 @@
 <?php
+namespace Mailer;
 
 use PHPUnit\Framework\TestCase;
 use GuzzleHttp\Client;

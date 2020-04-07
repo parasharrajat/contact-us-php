@@ -21,5 +21,10 @@
     "require-dev": {
         "guzzlehttp/guzzle": "~6.0",
         "phpunit/phpunit": "^9.1"
+    },
+    "scripts": {
+        "post-update-cmd": [
+            "Mailer\\postInstall"
+        ]
     }
 }

@@ -1,4 +1,6 @@
 <?php
+
+namespace Mailer;
 // Import PHPMailer classes into the global namespace
 // These must be at the top of your script, not inside a function
 use PHPMailer\PHPMailer\PHPMailer;
@@ -9,6 +11,36 @@ require __DIR__ . '/vendor/autoload.php';
 
 $config;
 
+function postInstall()
+{
+  if (!is_dir('recordedData')) {
+    mkdir('recordedData', 0751);
+  }
+  if (!file_exists('contact.json')) {
+    $f = fopen('contact.json', 'w');
+    fclose($f);
+    $wrote = file_put_contents(
+      'contact.json',
+      "{
+    'adminEmail': '',
+    'adminPassword':'',
+    'adminnName':'admin',
+    'adminRecipients': [
+      {
+        'name': 'Admin',
+        'email': ' '
+      }
+    ],
+    'sendGreeting': false
+   }"
+    );
+    if (!$wrote) {
+      throw new Exception('Failed to write config file "contact.json"');
+    }
+    chmod('contact.json', 0750);
+  }
+  clearstatcache();
+}
 function checkPreriquisite()
 {
   if (!is_dir('recordedData')) {
@@ -209,7 +241,6 @@ function init()
 
 
 try {
-
   checkPreriquisite();
   init();
 } catch (Exception $e) {
