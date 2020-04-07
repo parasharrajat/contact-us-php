@@ -2,7 +2,10 @@
     "name": "parasharrajat/contact-us",
     "type": "library",
     "description": "Simple Php script to send Mail to user for contact us form",
-    "keywords": ["mailer","contact"],
+    "keywords": [
+        "mailer",
+        "contact"
+    ],
     "homepage": "https://github.com/parasharrajat/contact-us-php",
     "license": "Apache-2.0",
     "authors": [
@@ -22,12 +25,15 @@
         "guzzlehttp/guzzle": "~6.0",
         "phpunit/phpunit": "^9.1"
     },
-    "scripts": {
-        "post-update-cmd": [
-            "Mailer\\postInstall"
+    "autoload": {
+        "files": [
+            "index.php",
+            "hooks.php"
         ]
     },
-    "autoload": {
-        "files": ["index.php"]
+    "scripts": {
+        "post-update-cmd": [
+            "Hooks\\MyHooks::postInstall"
+        ]
     }
 }

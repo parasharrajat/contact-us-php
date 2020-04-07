@@ -1,57 +1,52 @@
 <?php
 
-namespace Mailer;
+// namespace Mailer;
 // Import PHPMailer classes into the global namespace
 // These must be at the top of your script, not inside a function
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 // Load Composer's autoloader
-require __DIR__ . '/vendor/autoload.php';
+// require __DIR__ . '/vendor/autoload.php';
 // Function to validate against any email injection attempts
 
 $config;
+$dataDirectory;
+$configPath;
+$dateNow = new DateTime("now", new DateTimeZone('UTC'));
+
 
 function run()
 {
+  global $configPath, $dataDirectory, $configPath;
 
+  $dataDirectory = 'recordedData';
+  $configPath = 'contact.json';
 
-  function postInstall()
+  function readConfig()
   {
-    if (!is_dir('recordedData')) {
-      mkdir('recordedData', 0751);
+    global $configPath, $dataDirectory, $configPath;
+
+    if (!file_exists($configPath)) {
+      throw new Exception("Please provide" . $configPath . 'config file');
     }
-    if (!file_exists('contact.json')) {
-      $f = fopen('contact.json', 'w');
-      fclose($f);
-      $wrote = file_put_contents(
-        'contact.json',
-        "{
-    'adminEmail': '',
-    'adminPassword':'',
-    'adminnName':'admin',
-    'adminRecipients': [
-      {
-        'name': 'Admin',
-        'email': ' '
-      }
-    ],
-    'sendGreeting': false
-   }"
-      );
-      if (!$wrote) {
-        throw new Exception('Failed to write config file "contact.json"');
-      }
-      chmod('contact.json', 0750);
+    $cfg = file_get_contents($configPath);
+    $config = json_decode(($cfg));
+    if ($config->adminEmail || $config->adminPassword) {
+      throw new Exception('Either "adminEmail" or "adminPassword" is missing');
     }
-    clearstatcache();
+    if (isset($config->dataDirectory)) {
+      $dataDirectory = $config->dataDirectory;
+    }
+    if (isset($config->configPath)) {
+      $dataDirectory = $config->configPath;
+    }
   }
   function checkPreriquisite()
   {
-    if (!is_dir('recordedData')) {
+    global $dataDirectory;
+
+    if (!is_dir($dataDirectory)) {
       throw new Exception('Please create "recordData" directory in the calling script folder');
-    }
-    if (!is_dir('contact.json')) {
-      throw new Exception('Please provide contact.json config file');
     }
     clearstatcache();
   }
@@ -92,9 +87,8 @@ function run()
     return $mail;
   }
 
-  function writeToUserList($data)
+  function writeToUserList($userLists, $data)
   {
-    global $userLists;
     $userContact = $data[1];
     $userName = $data[1];
     $time = $data[1];
@@ -108,13 +102,11 @@ function run()
     }
     array_unshift($userLists, ["value" => $data[0], 'name' => $userName, 'contact' => $userContact, "time" => $time]);
   }
-  function sendToUser($n)
+  function sendToUser($n, $visitor_email)
   {
-    global $dateNow, $visitor_email, $res, $config;
+    global $dateNow, $config;
     if ($n > 99) {
-      $res['error'] = false;
-      $res['message'] = 'Successfully registered but we are unable to send you our greetings.';
-      return;
+      return false;
     }
     $n = $n + 1;
     try {
@@ -128,18 +120,15 @@ function run()
       $mail->Body =  $smarty->fetch('extra/emailTemplates/thankYouToUser.tpl');
       $mail->AltBody = "Hi, $visitor_email, Thank you for registering on POPProbe.";
       $mail->send();
-      $res['message'] = "Successfully registered.";
     } catch (Exception $e) {
-      sendToUser($n);
+      sendToUser($n, $visitor_email);
     }
   }
-  function sendToAdmin($n)
+  function sendToAdmin($n, $visitor_email, $userLists)
   {
-    global $userLists, $dateNow, $fileName, $visitor_email, $res, $config;
+    global  $dateNow, $config;
     if ($n > 99) {
-      $res['error'] = true;
-      $res['message'] = 'Message could not be sent.';
-      return;
+      throw new Exception('Message could not be sent.');
     }
     $n = $n + 1;
     try {
@@ -162,48 +151,31 @@ function run()
       $mail->Body    = $smarty->fetch('extra/emailTemplates/whenUserSendEmail.tpl');
       $mail->AltBody = "Newly added user $visitor_email";
       $mail->send();
-      $res['message'] = "Successfully registered.";
       return true;
     } catch (Exception $e) {
-      sendToAdmin($n);
+      sendToAdmin($n, $visitor_email, $userLists);
     }
   }
   function init()
   {
-    global $config;
-    $res = [
-      "message" => '',
-      "error" => false
-    ];
+    global $dataDirectory, $dateNow, $config;
+
+    $res = "";
     if (!isset($_POST['submit'])) {
       //This page should not be accessed directly. Need to submit the form.
-      $res['message'] = "you need to submit the form!";
-      $res['error'] = true;
-      echo json_encode($res);
-      exit;
+      throw new Exception("you need to submit the form!");
     }
     $visitor_email = $_POST['email'];
     $visitor_name = $_POST['user-name'];
     $visitor_number = $_POST['message'];
     if (empty($visitor_email) && empty($visitor_name)) {
-      $res['message'] = "Please fill the mandatory fields";
-      $res['error'] = true;
-      echo json_encode($res);
-      exit;
+      throw new Exception("Please fill the mandatory fields");
     }
     if (isInjected($visitor_email)) {
-      $res['message'] = "Bad Email";
-      $res['error'] = true;
-      echo json_encode($res);
-      exit;
+      throw new Exception("Bad Email");
     }
-    $cfg = file_get_contents('config.json');
-    $config = json_decode(($cfg));
-    if ($config->adminEmail || $config->adminPassword) {
-      throw new Exception('Either "adminEmail" or "adminPassword" is missing');
-    }
-    $dateNow = new DateTime("now", new DateTimeZone('UTC'));
-    $fileName = "recordedData/" . $dateNow->format('Y-M') . ".csv";
+
+    $fileName = $dataDirectory . $dateNow->format('Y-M') . ".csv";
     $formattedTime = $dateNow->format('d-M-y H:i:s T');
     $file = fopen($fileName, "a+");
     // write header if file is empty
@@ -220,35 +192,47 @@ function run()
         $isUserDuplicate = true;
         break;
       }
-      // writeToUserList($data);
+      writeToUserList($userLists, $data);
     }
 
     if (!$isUserDuplicate) {
       // your file is not empty
       array_unshift($userLists, ["value" => $visitor_email, 'name' => $visitor_name, 'contact' => $visitor_number, "time" => $formattedTime]);
       //   echo 'not duplicate';
-      // array_pop($userLists);
+      array_pop($userLists);
       // to Admin
-      sendToAdmin(0);
+      $isSent =  sendToAdmin(0, $visitor_email, $userLists);
+      $res = $isSent && "Successfully registered.";
     }
-    // thank you mail back to user
-    if ($config->sendGreeting) {
 
-      sendToUser(0);
+    // thank you mail back to user
+    if (isset($config->sendGreeting)) {
+
+      $isGreeted = sendToUser(0, $visitor_email);
+      $res = $isGreeted && 'Successfully registered but we are unable to send you our greetings.';
     }
     if (!$isUserDuplicate) {
       fputcsv($file, [$visitor_email, $visitor_name, $visitor_number || 'NA', $formattedTime]);
     }
     fclose($file);
-    echo json_encode($res);
+    return $res;
   }
 
   try {
+    readConfig();
     checkPreriquisite();
-    init();
+    $res = init();
+    echo json_encode([
+      "message" => $res,
+      "error" => false
+    ]);
   } catch (Exception $e) {
-    echo $e->getMessage();
+    // echo $e->getMessage();
     // var_dump($e);
+    echo json_encode([
+      "message" => $e->getMessage(),
+      "error" => true
+    ]);
   }
   exit;
 }
